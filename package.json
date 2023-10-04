@@ -1,0 +1,34 @@
+{
+  "name": "tauri-fs",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "tauri": "tauri"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^1.4.0",
+    "antd": "^5.9.4",
+    "events": "^3.3.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "xml-formatter": "^3.5.0",
+    "xml2js": "^0.6.2"
+  },
+  "devDependencies": {
+    "@prettier/plugin-xml": "^3.2.1",
+    "@tauri-apps/cli": "^1.4.0",
+    "@types/node": "^20.7.0",
+    "@types/react": "^18.2.15",
+    "@types/react-dom": "^18.2.7",
+    "@types/xml2js": "^0.4.12",
+    "@vitejs/plugin-react": "^4.0.3",
+    "prettier": "^3.0.3",
+    "typescript": "^5.0.2",
+    "vite": "^4.4.4"
+  },
+  "packageManager": "yarn@3.6.3"
+}
