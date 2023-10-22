@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import type { RadioChangeEvent } from "antd";
 import { Input, Radio, Space, Spin } from "antd";
 import { Command } from "@tauri-apps/api/shell";
+import { platform } from "@tauri-apps/api/os";
 
 const Npm: React.FC = () => {
   const [customUrl, setCustomUrl] = useState<string>("");
@@ -50,9 +51,16 @@ const Npm: React.FC = () => {
   const [value, setValue] = useState<string>("");
   const [url, setUrl] = useState<string>("");
 
+  async function getNpmProgram() {
+    const platformName = await platform();
+    return /^win/i.test(platformName) ? "run-npm.cmd" : "run-npm";
+  }
+
   function getUrl(): Promise<string> {
-    return new Promise<string>((resolve) => {
-      const command = new Command("run-npm", ["config", "get", "registry"]);
+    return new Promise<string>(async (resolve) => {
+      const platformName = await platform();
+      const program = /^win/i.test(platformName) ? "run-npm-cmd" : "run-npm";
+      const command = new Command(program, ["config", "get", "registry"]);
       let url = "";
 
       command.stdout.on("data", (line) => {
@@ -66,6 +74,12 @@ const Npm: React.FC = () => {
 
       command.spawn();
     });
+  }
+
+  async function writeUrlToFile(url: string) {
+    const program = await getNpmProgram();
+    const command = new Command(program, ["config", "set", "registry", url]);
+    await command.spawn();
   }
 
   const initRadio = () => {
@@ -108,11 +122,6 @@ const Npm: React.FC = () => {
         <div className="content" />
       </Spin>
     );
-  }
-
-  async function writeUrlToFile(url: string) {
-    const command = new Command("run-npm", ["config", "set", "registry", url]);
-    await command.spawn();
   }
 
   const onChange = async (e: RadioChangeEvent) => {
