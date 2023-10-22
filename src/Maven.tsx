@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import type { RadioChangeEvent } from "antd";
-import { Input, Radio, Space } from "antd";
+import { Input, Radio, Space, Spin } from "antd";
 import { readFileFromAppConfig, writeFileToAppConfigXml } from "./fileUtils.ts";
 import { XmlUtils } from "./XMLUtil.ts";
 import { homeDir } from "@tauri-apps/api/path";
@@ -46,48 +46,58 @@ const Maven: React.FC = () => {
     },
   ];
 
+  const [isLoading, setLoading] = useState(true);
   const [value, setValue] = useState("");
-
   const [mavenConfigFile, setMavenConfigFile] = useState("");
 
-  useEffect(() => {
-    const readConfigFile = async () => {
-      try {
-        const homeDirPath = await homeDir();
-        setMavenConfigFile(homeDirPath + "/.m2/settings.xml");
+  const initRadio = async () => {
+    try {
+      const homeDirPath = await homeDir();
+      setMavenConfigFile(homeDirPath + "/.m2/settings.xml");
 
-        const fileContent = await readFileFromAppConfig(
-          homeDirPath + "/.m2/settings.xml",
-        );
-        let url = await XmlUtils.extractName(fileContent);
+      const fileContent = await readFileFromAppConfig(
+        homeDirPath + "/.m2/settings.xml",
+      );
+      let url = await XmlUtils.extractName(fileContent);
 
-        const option = mavenOptions.find(
-          (option) =>
-            option.url != mavenOptions[0].url &&
-            option.url != mavenOptions[mavenOptions.length - 1].url &&
-            (option.url == url || option.url + "/" == url),
-        );
+      const option = mavenOptions.find(
+        (option) =>
+          option.url != mavenOptions[0].url &&
+          option.url != mavenOptions[mavenOptions.length - 1].url &&
+          (option.url == url || option.url + "/" == url),
+      );
 
-        if (url && !option) {
-          setValue(mavenOptions[mavenOptions.length - 1].value);
-          setCustomUrl(url);
-          setDisabled(false);
-          return;
-        }
-
-        if (!option) {
-          setValue(mavenOptions[0].value);
-          return;
-        }
-
-        setValue(option?.value as string);
-      } catch (error) {
-        console.error("Error reading file:", error);
+      if (url && !option) {
+        setValue(mavenOptions[mavenOptions.length - 1].value);
+        setCustomUrl(url);
+        setDisabled(false);
+        return;
       }
-    };
 
-    readConfigFile();
+      if (!option) {
+        setValue(mavenOptions[0].value);
+        return;
+      }
+
+      setValue(option?.value as string);
+    } catch (error) {
+      console.error("Error reading file:", error);
+    }
+  };
+
+  useEffect(() => {
+    initRadio().then(() => {
+      setLoading(false);
+    });
   }, []);
+
+  if (isLoading) {
+    return (
+      <Spin tip="Loading">
+        <div className="content" />
+      </Spin>
+    );
+  }
 
   async function writeUrlToFile(name: string, url: string) {
     let text = await readFileFromAppConfig(mavenConfigFile);

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import type { RadioChangeEvent } from "antd";
-import { Input, Radio, Space } from "antd";
+import { Input, Radio, Space, Spin } from "antd";
 import { Command } from "@tauri-apps/api/shell";
 
 const Npm: React.FC = () => {
@@ -45,10 +45,12 @@ const Npm: React.FC = () => {
     },
   ];
 
+  const [isLoading, setLoading] = useState(true);
+
   const [value, setValue] = useState<string>("");
   const [url, setUrl] = useState<string>("");
 
-  async function getUrl(): Promise<string> {
+  function getUrl(): Promise<string> {
     return new Promise<string>((resolve) => {
       const command = new Command("run-npm", ["config", "get", "registry"]);
       let url = "";
@@ -66,41 +68,47 @@ const Npm: React.FC = () => {
     });
   }
 
-  useEffect(() => {
-    getUrl();
-    const readConfigFile = async () => {
-      try {
-        const option = npmOptions.find(
-          (option) =>
-            option.url != npmOptions[0].url &&
-            option.url != npmOptions[npmOptions.length - 1].url &&
-            (option.url == url || option.url + "/" == url),
-        );
+  const initRadio = () => {
+    const option = npmOptions.find(
+      (option) =>
+        option.url != npmOptions[0].url &&
+        option.url != npmOptions[npmOptions.length - 1].url &&
+        (option.url == url || option.url + "/" == url),
+    );
 
-        if (url && !option) {
-          if (url.includes("https://registry.npmjs.org")) {
-            setValue(npmOptions[0].value);
-            return;
-          }
-          setValue(npmOptions[npmOptions.length - 1].value);
-          setCustomUrl(url as string);
-          setDisabled(false);
-          return;
-        }
-
-        if (!option) {
-          setValue(npmOptions[0].value);
-          return;
-        }
-
-        setValue(option?.value as string);
-      } catch (error) {
-        console.error("Error reading file:", error);
+    if (url && !option) {
+      if (url.includes("https://registry.npmjs.org")) {
+        setValue(npmOptions[0].value);
+        return;
       }
-    };
+      setValue(npmOptions[npmOptions.length - 1].value);
+      setCustomUrl(url as string);
+      setDisabled(false);
+      return;
+    }
 
-    readConfigFile();
+    if (!option) {
+      setValue(npmOptions[0].value);
+      return;
+    }
+
+    setValue(option?.value as string);
+  };
+
+  useEffect(() => {
+    getUrl().then(() => {
+      setLoading(false);
+    });
+    initRadio();
   }, [url]);
+
+  if (isLoading) {
+    return (
+      <Spin tip="Loading">
+        <div className="content" />
+      </Spin>
+    );
+  }
 
   async function writeUrlToFile(url: string) {
     const command = new Command("run-npm", ["config", "set", "registry", url]);
