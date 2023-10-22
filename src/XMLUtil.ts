@@ -13,12 +13,6 @@ export class XmlUtils {
     return match ? match[1] : "";
   }
 
-  static async extractRegistry(str: string): Promise<string> {
-    const regex = /registry=(.*)/;
-    const match = str.match(regex);
-    return match ? match[1] : "";
-  }
-
   static async replaceMavenUrl(
     settings: string,
     name: string,
@@ -36,30 +30,5 @@ export class XmlUtils {
     const regex = /<mirrors>[\s\S]*<\/mirrors>/;
     let replace = settings.replace(regex, `<mirrors>${mirror}</mirrors>`);
     return await FormatterUtil.format(replace);
-  }
-
-  static async replaceRegistry(text: string, url: string): Promise<string> {
-    const searchString = "registry=";
-    const replacement = `registry=${url}`;
-
-    if (text.includes(searchString)) {
-      return text.replace(/^registry=.*/gm, replacement);
-    }
-
-    if (text.trim() !== "") {
-      return `${text}\n${replacement}`;
-    }
-
-    return replacement;
-  }
-
-  static async removeRegistryLine(text: string): Promise<string> {
-    const lines = text.split(/\r?\n/);
-
-    const filteredLines = lines.filter((line) => {
-      return !line.includes("registry=");
-    });
-
-    return filteredLines.join("\n");
   }
 }

@@ -5,6 +5,7 @@ import Maven from "./Maven.tsx";
 import { open } from "@tauri-apps/api/shell";
 import Npm from "./Npm.tsx";
 import { homeDir } from "@tauri-apps/api/path";
+import Rust from "./Rust.tsx";
 
 interface DataType {
   key: React.Key;
@@ -32,8 +33,12 @@ const columns: ColumnsType<DataType> = [
 const SiteTable: React.FC = () => {
   const [mavenConfigPath, setMavenConfigPath] = useState("");
   const [mavenConfigFile, setMavenConfigFile] = useState("");
+
   const [npmConfigPath, setNpmConfigPath] = useState("");
   const [npmConfigFile, setNpmConfigFile] = useState("");
+
+  const [rustConfigPath, setRustConfigPath] = useState("");
+  const [rustConfigFile, setRustConfigFile] = useState("");
 
   useEffect(() => {
     const readConfigFile = async () => {
@@ -42,8 +47,12 @@ const SiteTable: React.FC = () => {
 
         setMavenConfigPath(homeDirPath + ".m2/");
         setMavenConfigFile(homeDirPath + ".m2/" + "settings.xml");
+
         setNpmConfigPath(homeDirPath);
         setNpmConfigFile(homeDirPath + ".npmrc");
+
+        setRustConfigPath(homeDirPath + ".cargo/");
+        setRustConfigFile(homeDirPath + ".cargo/" + "config");
       } catch (error) {
         console.error("Error reading file:", error);
       }
@@ -92,6 +101,29 @@ const SiteTable: React.FC = () => {
           <Button
             onClick={async () => {
               await open(npmConfigFile);
+            }}
+          >
+            打开文件
+          </Button>
+        </Space>
+      ),
+    },
+    {
+      key: "Rust",
+      site: "Rust",
+      mirrors: <Rust />,
+      action: (
+        <Space>
+          <Button
+            onClick={async () => {
+              await open(rustConfigPath);
+            }}
+          >
+            打开目录
+          </Button>
+          <Button
+            onClick={async () => {
+              await open(rustConfigFile);
             }}
           >
             打开文件

@@ -1,14 +1,14 @@
 import React, {useEffect, useState} from "react";
 import type {RadioChangeEvent} from "antd";
 import {Input, Radio, Space, Spin} from "antd";
-import {readFileFromAppConfig, writeFileToAppConfigXml} from "./fileUtils.ts";
-import {XmlUtils} from "./XMLUtil.ts";
+import {readFileFromAppConfig, writeFileToAppConfig} from "./fileUtils.ts";
 import {homeDir} from "@tauri-apps/api/path";
 
 /**
- * https://developer.aliyun.com/mvn/guide
+ * https://rsproxy.cn/
+ * https://mirrors.tuna.tsinghua.edu.cn/help/crates.io-index/
  */
-const Maven: React.FC = () => {
+const Rust: React.FC = () => {
   const [customUrl, setCustomUrl] = useState("");
   const [disabled, setDisabled] = useState(true);
 
@@ -19,14 +19,9 @@ const Maven: React.FC = () => {
       url: "",
     },
     {
-      label: "阿里云",
-      value: "aliyun",
-      url: "https://maven.aliyun.com/repository/public",
-    },
-    {
-      label: "华为云",
-      value: "huaweiCloud",
-      url: "https://repo.huaweicloud.com/repository/maven",
+      label: "RsProxy（字节）",
+      value: "RsProxy",
+      url: "sparse+https://rsproxy.cn/index/",
     },
     {
       label: (
@@ -38,7 +33,7 @@ const Maven: React.FC = () => {
             onChange={(e) => {
               if (value == mavenOptions[mavenOptions.length - 1].value) {
                 setCustomUrl(e.target.value);
-                writeUrlToFile("custom", e.target.value);
+                writeUrlToFile(e.target.value);
               }
             }}
           ></Input>
@@ -51,17 +46,28 @@ const Maven: React.FC = () => {
 
   const [isLoading, setLoading] = useState(true);
   const [value, setValue] = useState("");
-  const [mavenConfigFile, setMavenConfigFile] = useState("");
+  const [rustConfigFile, setRustConfigFile] = useState("");
+
+  function extractRegistryUrl(
+    configText: string,
+    sectionName: string,
+  ): string | null {
+    const regex = new RegExp(
+      `\\[${sectionName}\\][\\s\\S]*?registry\\s*=\\s*"([^"]+)"`,
+    );
+    const match = configText.match(regex);
+    return match ? match[1] : null;
+  }
 
   const initRadio = async () => {
     try {
       const homeDirPath = await homeDir();
-      setMavenConfigFile(homeDirPath + "/.m2/settings.xml");
+      setRustConfigFile(homeDirPath + "/.cargo/config");
 
       const fileContent = await readFileFromAppConfig(
-        homeDirPath + "/.m2/settings.xml",
+        homeDirPath + "/.cargo/config",
       );
-      let url = await XmlUtils.extractName(fileContent);
+      let url = extractRegistryUrl(fileContent, "source.mirror");
 
       const option = mavenOptions.find(
         (option) =>
@@ -88,7 +94,37 @@ const Maven: React.FC = () => {
     }
   };
 
+  function removeSectionsFromConfig(
+    configText: string,
+    sectionNames: string[],
+  ): string {
+    let modifiedConfigText = configText;
+    for (const sectionName of sectionNames) {
+      const regex = new RegExp(`\\[${sectionName}\\][\\s\\S]*?(?=\\[|$)`, "g");
+      modifiedConfigText = modifiedConfigText.replace(regex, "");
+    }
+    return modifiedConfigText;
+  }
+
+  const configText = `[source.crates-io]\nreplace-with = 'mirror'\n[source.mirror]\nregistry = "{mirror}"`;
+  const sectionNames = ["source.crates-io", "source.mirror"];
+
+  function replace(text: string, url: string): string {
+    const modifiedConfigText = removeSectionsFromConfig(text, sectionNames);
+    const mirrorText = configText.replace("{mirror}", url);
+    if (modifiedConfigText.trim() == "") {
+      return `${mirrorText}`;
+    }
+    return `${modifiedConfigText}\n${mirrorText}`;
+  }
+
   useEffect(() => {
+    const modifiedConfigText = removeSectionsFromConfig(
+      configText,
+      sectionNames,
+    );
+    console.log(modifiedConfigText);
+
     initRadio().then(() => {
       setLoading(false);
     });
@@ -102,14 +138,10 @@ const Maven: React.FC = () => {
     );
   }
 
-  async function writeUrlToFile(name: string, url: string) {
-    let text = await readFileFromAppConfig(mavenConfigFile);
-    if (text == "") {
-      text =
-        '<?xml version="1.0" encoding="UTF-8"?><settings xmlns="http://maven.apache.org/SETTINGS/1.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 http://maven.apache.org/xsd/settings-1.0.0.xsd"><mirrors></mirrors></settings>';
-    }
-    const replacedText = await XmlUtils.replaceMavenUrl(text, name, url);
-    writeFileToAppConfigXml(mavenConfigFile, replacedText);
+  async function writeUrlToFile(url: string) {
+    let text = await readFileFromAppConfig(rustConfigFile);
+    const replacedText = await replace(text, url);
+    writeFileToAppConfig(rustConfigFile, replacedText);
   }
 
   const onChange = async (e: RadioChangeEvent) => {
@@ -117,10 +149,10 @@ const Maven: React.FC = () => {
     setValue(checkedValue);
 
     if (mavenOptions[0].value === checkedValue) {
-      const text = await readFileFromAppConfig(mavenConfigFile);
+      const text = await readFileFromAppConfig(rustConfigFile);
       if (text && text != "") {
-        const replacedText = await XmlUtils.replaceMavenNone(text);
-        writeFileToAppConfigXml(mavenConfigFile, replacedText);
+        const replacedText = removeSectionsFromConfig(text, sectionNames);
+        writeFileToAppConfig(rustConfigFile, replacedText);
       }
       return;
     }
@@ -135,7 +167,7 @@ const Maven: React.FC = () => {
       (option) => option.value === checkedValue,
     );
     if (checkedOption) {
-      await writeUrlToFile(checkedValue, checkedOption.url as string);
+      await writeUrlToFile(checkedOption.url as string);
     }
   };
 
@@ -153,4 +185,4 @@ const Maven: React.FC = () => {
   );
 };
 
-export default Maven;
+export default Rust;

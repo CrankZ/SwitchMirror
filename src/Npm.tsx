@@ -1,9 +1,12 @@
-import React, { useEffect, useState } from "react";
-import type { RadioChangeEvent } from "antd";
-import { Input, Radio, Space, Spin } from "antd";
-import { Command } from "@tauri-apps/api/shell";
-import { platform } from "@tauri-apps/api/os";
+import React, {useEffect, useState} from "react";
+import type {RadioChangeEvent} from "antd";
+import {Input, Radio, Space, Spin} from "antd";
+import {Command} from "@tauri-apps/api/shell";
+import {platform} from "@tauri-apps/api/os";
 
+/**
+ * https://npmmirror.com/
+ */
 const Npm: React.FC = () => {
   const [customUrl, setCustomUrl] = useState<string>("");
   const [disabled, setDisabled] = useState<boolean>(true);
