@@ -46,20 +46,21 @@ const Npm: React.FC = () => {
     },
   ];
 
-  const [isLoading, setLoading] = useState(true);
+  const [isLoading, setLoading] = useState<boolean>(true);
 
   const [value, setValue] = useState<string>("");
   const [url, setUrl] = useState<string>("");
 
+  const [isDisabled, setIsDisabled] = useState<boolean>(true);
+
   async function getNpmProgram() {
     const platformName = await platform();
-    return /^win/i.test(platformName) ? "run-npm.cmd" : "run-npm";
+    return /^win/i.test(platformName) ? "run-npm-cmd" : "run-npm";
   }
 
   function getUrl(): Promise<string> {
     return new Promise<string>(async (resolve) => {
-      const platformName = await platform();
-      const program = /^win/i.test(platformName) ? "run-npm-cmd" : "run-npm";
+      const program = await getNpmProgram();
       const command = new Command(program, ["config", "get", "registry"]);
       let url = "";
 
@@ -109,7 +110,22 @@ const Npm: React.FC = () => {
     setValue(option?.value as string);
   };
 
+  async function check() {
+    try {
+      const program = await getNpmProgram();
+      await new Command(program).spawn();
+      setIsDisabled(false);
+    } catch (e) {
+      // 命令不存在的情况 "program not found"
+      console.log(e);
+      setLoading(false);
+      setIsDisabled(true);
+    }
+  }
+
   useEffect(() => {
+    check();
+
     getUrl().then(() => {
       setLoading(false);
     });
@@ -151,6 +167,7 @@ const Npm: React.FC = () => {
   return (
     <>
       <Radio.Group
+        disabled={isDisabled}
         onChange={onChange}
         name="radiogroup"
         options={npmOptions}
