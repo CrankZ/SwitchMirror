@@ -1,13 +1,11 @@
 import React, { useEffect, useState } from "react";
 import type { RadioChangeEvent } from "antd";
 import { Input, Radio, Space } from "antd";
-import { readFileFromAppConfig, writeFileToAppConfig } from "./fileUtils.ts";
-import { XmlUtils } from "./XMLUtil.ts";
-import { homeDir } from "@tauri-apps/api/path";
+import { Command } from "@tauri-apps/api/shell";
 
 const Npm: React.FC = () => {
-  const [customUrl, setCustomUrl] = useState("");
-  const [disabled, setDisabled] = useState(true);
+  const [customUrl, setCustomUrl] = useState<string>("");
+  const [disabled, setDisabled] = useState<boolean>(true);
 
   const npmOptions = [
     {
@@ -47,19 +45,31 @@ const Npm: React.FC = () => {
     },
   ];
 
-  const [value, setValue] = useState("");
+  const [value, setValue] = useState<string>("");
+  const [url, setUrl] = useState<string>("");
 
-  const [npmConfigFile, setNpmConfigFile] = useState("");
+  async function getUrl(): Promise<string> {
+    return new Promise<string>((resolve) => {
+      const command = new Command("run-npm", ["config", "get", "registry"]);
+      let url = "";
+
+      command.stdout.on("data", (line) => {
+        url = line;
+      });
+
+      command.on("close", () => {
+        resolve(url);
+        setUrl(url);
+      });
+
+      command.spawn();
+    });
+  }
 
   useEffect(() => {
+    getUrl();
     const readConfigFile = async () => {
       try {
-        const homeDirPath = await homeDir();
-        setNpmConfigFile(homeDirPath + ".npmrc");
-
-        const fileContent = await readFileFromAppConfig(homeDirPath + ".npmrc");
-        const url = await XmlUtils.extractRegistry(fileContent);
-
         const option = npmOptions.find(
           (option) =>
             option.url != npmOptions[0].url &&
@@ -68,8 +78,12 @@ const Npm: React.FC = () => {
         );
 
         if (url && !option) {
+          if (url.includes("https://registry.npmjs.org")) {
+            setValue(npmOptions[0].value);
+            return;
+          }
           setValue(npmOptions[npmOptions.length - 1].value);
-          setCustomUrl(url);
+          setCustomUrl(url as string);
           setDisabled(false);
           return;
         }
@@ -86,12 +100,11 @@ const Npm: React.FC = () => {
     };
 
     readConfigFile();
-  }, []);
+  }, [url]);
 
   async function writeUrlToFile(url: string) {
-    let text = await readFileFromAppConfig(npmConfigFile);
-    const replacedText = await XmlUtils.replaceRegistry(text, url);
-    writeFileToAppConfig(npmConfigFile, replacedText);
+    const command = new Command("run-npm", ["config", "set", "registry", url]);
+    await command.spawn();
   }
 
   const onChange = async (e: RadioChangeEvent) => {
@@ -99,10 +112,8 @@ const Npm: React.FC = () => {
     setValue(checkedValue);
 
     if (npmOptions[0].value === checkedValue) {
-      const text = await readFileFromAppConfig(npmConfigFile);
-      if (text && text != "") {
-        const replacedText = await XmlUtils.removeRegistryLine(text);
-        writeFileToAppConfig(npmConfigFile, replacedText);
+      if (url && url != "") {
+        await writeUrlToFile("");
       }
       return;
     }

@@ -13,6 +13,17 @@
   "tauri": {
     "allowlist": {
       "all": true,
+      "shell": {
+        "execute": true,
+        "sidecar": true,
+        "scope": [
+          {
+            "name": "run-npm",
+            "cmd": "npm.cmd",
+            "args": true
+          }
+        ]
+      },
       "fs": {
         "scope": [
           "$HOME/.m2/settings.xml",
